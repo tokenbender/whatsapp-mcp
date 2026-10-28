@@ -76,6 +76,26 @@ PreviewDimension = Annotated[
 ]
 
 
+import functools
+
+
+def _write_gate(fn):
+    """Fork patch: write tools (send, react, mark read) are disabled unless
+    WHATSAPP_ALLOW_WRITES=1. Reads stay open."""
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        if os.environ.get("WHATSAPP_ALLOW_WRITES") != "1":
+            return {
+                "success": False,
+                "error": "writes are disabled in this fork (read-only). Needs explicit approval from the owner.",
+            }
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+
 @mcp.tool()
 def search_contacts(query: str) -> list[dict[str, Any]]:
     """Search WhatsApp contacts by name or phone number.
@@ -335,6 +355,7 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> dic
 
 
 @mcp.tool()
+@_write_gate
 def send_message(
     recipient: str,
     message: str,
@@ -375,6 +396,7 @@ def send_message(
 
 
 @mcp.tool()
+@_write_gate
 def send_reaction(
     recipient: str,
     message_id: str,
@@ -401,6 +423,7 @@ def send_reaction(
 
 
 @mcp.tool()
+@_write_gate
 def mark_messages_read(
     message_ids: list[str],
     chat_jid: str,
@@ -426,6 +449,7 @@ def mark_messages_read(
 
 
 @mcp.tool()
+@_write_gate
 def send_file(recipient: str, media_path: str, caption: str = "") -> dict[str, Any]:
     """Send a file (image, video, document) via WhatsApp, optionally with a caption.
 
@@ -450,6 +474,7 @@ def send_file(recipient: str, media_path: str, caption: str = "") -> dict[str, A
 
 
 @mcp.tool()
+@_write_gate
 def send_audio_message(recipient: str, media_path: str) -> dict[str, Any]:
     """Send any audio file as a WhatsApp audio message to the specified recipient. For group messages use the JID. If it errors due to ffmpeg not being installed, use send_file instead.
 
